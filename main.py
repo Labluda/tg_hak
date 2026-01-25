@@ -5,20 +5,32 @@ import gdown
 from utils import data_transform, features_for_test
 import os
 
+# ------------------------------
+# Создание папки для модели
+# ------------------------------
 os.makedirs("trained_model", exist_ok=True)
-gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-app = FastAPI(title="CatBoost Prediction API")
 
 # ------------------------------
-# Загрузка модели с Google Drive
+# Ссылка на модель и путь для сохранения
 # ------------------------------
 MODEL_URL = "https://drive.google.com/uc?id=1XAtCA6S9KMqJ0h2Ud4BvF-OFqZKtxiwZ"
 MODEL_PATH = "trained_model/best_catboost_model.cbm"
 
+# ------------------------------
+# Скачивание модели
+# ------------------------------
 gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
 
+# ------------------------------
+# Загрузка модели CatBoost
+# ------------------------------
 model = CatBoostRegressor()
 model.load_model(MODEL_PATH)
+
+# ------------------------------
+# Создание FastAPI приложения
+# ------------------------------
+app = FastAPI(title="CatBoost Prediction API")
 
 # ------------------------------
 # Эндпоинт для предсказаний массива JSON
@@ -37,12 +49,13 @@ async def predict(request: Request):
         {"predicted_views": 456}
     ]
     """
+    # Получаем JSON
     json_data = await request.json()
 
     # Преобразуем в DataFrame
     df = pd.DataFrame(json_data)
 
-    # Переименуем колонки для совместимости
+    # Переименуем колонки для совместимости с функциями подготовки
     if 'channel' in df.columns:
         df = df.rename(columns={'channel': 'channel_name'})
     if 'data' in df.columns:
