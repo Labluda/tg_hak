@@ -3,7 +3,10 @@ import pandas as pd
 from catboost import CatBoostRegressor
 import gdown
 from utils import data_transform, features_for_test
+import os
 
+os.makedirs("trained_model", exist_ok=True)
+gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
 app = FastAPI(title="CatBoost Prediction API")
 
 # ------------------------------
