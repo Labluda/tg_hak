@@ -1,19 +1,28 @@
 # %%
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 %pip install phik -q
 %pip install catboost -q
-import phik
+%pip install optuna -q
+
+# %%
+import copy
+import numpy as np
+import pandas as pd
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 from statsmodels.tsa.seasonal import seasonal_decompose
-from catboost import CatBoostRegressor, Pool, cv
+import phik
+
 from sklearn.model_selection import RandomizedSearchCV, cross_val_score
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, root_mean_squared_error
-import numpy as np
-import copy
-%pip install optuna -q
+from sklearn.metrics import accuracy_score, mean_squared_error
+
+from catboost import CatBoostRegressor, Pool, cv
+
 import optuna
+%pip install -q gdown
+import gdown
 
 # %%
 data = pd.read_csv('../data/train.csv')
@@ -287,9 +296,23 @@ best_model = CatBoostRegressor(
 best_model.fit(X, y, cat_features=['channel_name', 'is_weekend'])
 
 # %%
-best_model.save_model('../trained_model/best_catboost_model.cbm')
-loaded_model = CatBoostRegressor()
-loaded_model.load_model('../trained_model/best_catboost_model.cbm')
+%pip install -q gdown
+import gdown
+import os
+
+# %%
+# best_model.save_model('../trained_model/best_catboost_model.cbm')
+# # loaded_model = CatBoostRegressor()
+# # loaded_model.load_model('../trained_model/best_catboost_model.cbm')
+
+# %%
+url = "https://drive.google.com/uc?id=1XAtCA6S9KMqJ0h2Ud4BvF-OFqZKtxiwZ"
+local_path = "best_catboost_model.cbm"
+
+gdown.download(url, local_path, quiet=False)
+
+model = CatBoostRegressor()
+model.load_model(local_path)
 
 # %% [markdown]
 # ## Тест

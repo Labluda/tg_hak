@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pandas
+numpy
+catboost
+gdown
+scikit-learn
+optuna
+seaborn
+matplotlib
+statsmodels
+phik
