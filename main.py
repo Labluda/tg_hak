@@ -18,21 +18,28 @@ model = CatBoostRegressor()
 model.load_model(MODEL_PATH)
 
 # ------------------------------
-# Эндпоинт для предсказаний
+# Эндпоинт для предсказаний массива JSON
 # ------------------------------
 @app.post("/predict")
 async def predict(request: Request):
     """
-    Принимает JSON вида:
-    {"cpm": float, "channel": str, "data": str}
-    Возвращает {"predicted_views": int}
+    Эндпоинт принимает массив JSON объектов, например:
+    [
+        {"cpm": 1.2, "channel": "A", "data": "2026-01-25"},
+        {"cpm": 2.3, "channel": "B", "data": "2026-01-25"}
+    ]
+    Возвращает массив предсказаний:
+    [
+        {"predicted_views": 123},
+        {"predicted_views": 456}
+    ]
     """
     json_data = await request.json()
 
-    # Преобразуем JSON в DataFrame с одной строкой
-    df = pd.DataFrame([json_data])
+    # Преобразуем в DataFrame
+    df = pd.DataFrame(json_data)
 
-    # Переименуем колонку 'channel' в 'channel_name' и 'data' в 'date' для совместимости
+    # Переименуем колонки для совместимости
     if 'channel' in df.columns:
         df = df.rename(columns={'channel': 'channel_name'})
     if 'data' in df.columns:
@@ -46,6 +53,7 @@ async def predict(request: Request):
     df = df.drop(['views', 'date'], axis=1, errors='ignore')
 
     # Прогноз
-    pred = model.predict(df)
+    preds = model.predict(df)
 
-    return {"predicted_views": int(pred[0])}
+    # Формируем массив JSON с предсказаниями
+    return [{"predicted_views": int(p)} for p in preds]
