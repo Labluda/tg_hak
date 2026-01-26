@@ -69,7 +69,9 @@ async def predict(request: Request):
     df = df.drop(['views', 'date'], axis=1, errors='ignore')
 
     # Прогноз
-    preds = model.predict(df)
+    log_preds = model.predict(df)
+    preds = np.expm1(log_preds)
+
 
     # Формируем массив JSON с предсказаниями
     return [{"predicted_views": int(p)} for p in preds]
