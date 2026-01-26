@@ -4,6 +4,7 @@ from catboost import CatBoostRegressor
 import gdown
 from utils import data_transform, features_for_test
 import os
+import numpy as np
 
 # ------------------------------
 # Создание папки для модели
