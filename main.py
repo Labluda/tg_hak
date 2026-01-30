@@ -5,6 +5,7 @@ import gdown
 from utils import data_transform, features_for_test
 import os
 import numpy as np
+import json
 
 # ------------------------------
 # Создание папки для модели
@@ -38,18 +39,6 @@ app = FastAPI(title="CatBoost Prediction API")
 # ------------------------------
 @app.post("/predict")
 async def predict(request: Request):
-    """
-    Эндпоинт принимает массив JSON объектов, например:
-    [
-        {"cpm": 1.2, "channel": "A", "data": "2026-01-25"},
-        {"cpm": 2.3, "channel": "B", "data": "2026-01-25"}
-    ]
-    Возвращает массив предсказаний:
-    [
-        {"predicted_views": 123},
-        {"predicted_views": 456}
-    ]
-    """
     json_data = await request.json()
     df = pd.DataFrame(json_data)
 
@@ -68,17 +57,22 @@ async def predict(request: Request):
     return [{"predicted_views": int(p)} for p in preds]
 
 # ------------------------------
-# Эндпоинт для загрузки CSV через браузер
+# Эндпоинт для загрузки JSON файла через браузер
 # ------------------------------
 @app.post("/predict_file")
 async def predict_file(file: UploadFile = File(...)):
     """
-    Эндпоинт принимает CSV файл с колонками:
-    cpm, channel, data
+    Эндпоинт принимает JSON файл с массивом объектов, например:
+    [
+        {"cpm": 1.2, "channel": "A", "data": "2026-01-25"},
+        {"cpm": 2.3, "channel": "B", "data": "2026-01-25"}
+    ]
     Возвращает массив предсказаний, как /predict
     """
-    # Читаем CSV в DataFrame
-    df = pd.read_csv(file.file)
+    # Читаем JSON из файла
+    contents = await file.read()
+    json_data = json.loads(contents)
+    df = pd.DataFrame(json_data)
 
     if 'channel' in df.columns:
         df = df.rename(columns={'channel': 'channel_name'})
