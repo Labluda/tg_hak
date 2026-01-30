@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 import pandas as pd
 from catboost import CatBoostRegressor
 import gdown
@@ -50,29 +50,46 @@ async def predict(request: Request):
         {"predicted_views": 456}
     ]
     """
-    # Получаем JSON
     json_data = await request.json()
-
-    # Преобразуем в DataFrame
     df = pd.DataFrame(json_data)
 
-    # Переименуем колонки для совместимости с функциями подготовки
     if 'channel' in df.columns:
         df = df.rename(columns={'channel': 'channel_name'})
     if 'data' in df.columns:
         df = df.rename(columns={'data': 'date'})
 
-    # Обработка данных
     df = data_transform(df)
     df = features_for_test(df)
-
-    # Убираем лишние колонки перед подачей в модель
     df = df.drop(['views', 'date'], axis=1, errors='ignore')
 
-    # Прогноз
     log_preds = model.predict(df)
     preds = np.expm1(log_preds)
 
+    return [{"predicted_views": int(p)} for p in preds]
 
-    # Формируем массив JSON с предсказаниями
+# ------------------------------
+# Эндпоинт для загрузки CSV через браузер
+# ------------------------------
+@app.post("/predict_file")
+async def predict_file(file: UploadFile = File(...)):
+    """
+    Эндпоинт принимает CSV файл с колонками:
+    cpm, channel, data
+    Возвращает массив предсказаний, как /predict
+    """
+    # Читаем CSV в DataFrame
+    df = pd.read_csv(file.file)
+
+    if 'channel' in df.columns:
+        df = df.rename(columns={'channel': 'channel_name'})
+    if 'data' in df.columns:
+        df = df.rename(columns={'data': 'date'})
+
+    df = data_transform(df)
+    df = features_for_test(df)
+    df = df.drop(['views', 'date'], axis=1, errors='ignore')
+
+    log_preds = model.predict(df)
+    preds = np.expm1(log_preds)
+
     return [{"predicted_views": int(p)} for p in preds]
