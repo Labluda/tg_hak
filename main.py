@@ -35,54 +35,61 @@ model.load_model(MODEL_PATH)
 app = FastAPI(title="CatBoost Prediction API")
 
 # ------------------------------
-# Эндпоинт для предсказаний массива JSON
+# Эндпоинт для предсказаний JSON или JSON-файла
 # ------------------------------
 @app.post("/predict")
-async def predict(request: Request):
-    json_data = await request.json()
+async def predict(
+    request: Request,
+    file: UploadFile | None = File(default=None)
+):
+    """
+    Эндпоинт принимает:
+    1) raw JSON:
+       [
+         {"cpm": 1.2, "channel": "A", "data": "2026-01-25"}
+       ]
+    2) JSON-файл через браузер
+    Возвращает массив предсказаний:
+       [{"predicted_views": 123}, ...]
+    """
+    # ------------------------------
+    # Чтение данных
+    # ------------------------------
+    if file is not None:
+        # Если пришёл файл, читаем как JSON
+        contents = await file.read()
+        try:
+            json_data = json.loads(contents)
+        except json.JSONDecodeError:
+            return {"error": "Файл не является корректным JSON"}
+    else:
+        # Иначе читаем тело запроса как JSON
+        try:
+            json_data = await request.json()
+        except json.JSONDecodeError:
+            return {"error": "Тело запроса пустое или невалидный JSON"}
+
+    # ------------------------------
+    # Преобразуем в DataFrame
+    # ------------------------------
     df = pd.DataFrame(json_data)
 
+    # Переименовываем колонки для совместимости
     if 'channel' in df.columns:
         df = df.rename(columns={'channel': 'channel_name'})
     if 'data' in df.columns:
         df = df.rename(columns={'data': 'date'})
 
+    # ------------------------------
+    # Обработка признаков
+    # ------------------------------
     df = data_transform(df)
     df = features_for_test(df)
     df = df.drop(['views', 'date'], axis=1, errors='ignore')
 
-    log_preds = model.predict(df)
-    preds = np.expm1(log_preds)
-
-    return [{"predicted_views": int(p)} for p in preds]
-
-# ------------------------------
-# Эндпоинт для загрузки JSON файла через браузер
-# ------------------------------
-@app.post("/predict_file")
-async def predict_file(file: UploadFile = File(...)):
-    """
-    Эндпоинт принимает JSON файл с массивом объектов, например:
-    [
-        {"cpm": 1.2, "channel": "A", "data": "2026-01-25"},
-        {"cpm": 2.3, "channel": "B", "data": "2026-01-25"}
-    ]
-    Возвращает массив предсказаний, как /predict
-    """
-    # Читаем JSON из файла
-    contents = await file.read()
-    json_data = json.loads(contents)
-    df = pd.DataFrame(json_data)
-
-    if 'channel' in df.columns:
-        df = df.rename(columns={'channel': 'channel_name'})
-    if 'data' in df.columns:
-        df = df.rename(columns={'data': 'date'})
-
-    df = data_transform(df)
-    df = features_for_test(df)
-    df = df.drop(['views', 'date'], axis=1, errors='ignore')
-
+    # ------------------------------
+    # Прогноз
+    # ------------------------------
     log_preds = model.predict(df)
     preds = np.expm1(log_preds)
 
